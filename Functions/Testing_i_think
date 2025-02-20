@@ -1,0 +1,53 @@
+import json
+
+def parse_definition(definition):
+    """
+    Parses a definition string (e.g., "n. definition") into a category and text.
+    """
+    if "." in definition:
+        category, text = definition.split(".", 1)
+        return category.strip(), text.strip()
+    return "", definition.strip()
+
+def transform_entry(entry):
+    """
+    Transforms a compact entry into a structured dictionary.
+    """
+    word = entry[0]
+    definitions = entry[5]  # The list of definitions
+    
+    structured_definitions = []
+    for definition in definitions:
+        category, text = parse_definition(definition)
+        structured_definitions.append({
+            "category": category,
+            "text": text
+        })
+    
+    return {
+        "word": word,
+        "definitions": structured_definitions
+    }
+
+def transform_json(input_file, output_file):
+    """
+    Transforms the compact JSON file into a structured JSON file.
+    """
+    # Load the input JSON file
+    with open(input_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    
+    # Transform each entry
+    transformed_data = [transform_entry(entry) for entry in data]
+    
+    # Save the transformed data to the output JSON file
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(transformed_data, f, ensure_ascii=False, indent=2)
+    
+    print(f"Transformed data saved to {output_file}")
+
+# Example usage
+if __name__ == "__main__":
+    input_file = "test.json"  # Input file name
+    output_file = "structured_output.json"  # Output file name
+    transform_json(input_file, output_file)

@@ -1,0 +1,27 @@
+[
+  [
+    "example_word",
+    "",
+    "",
+    "",
+    0,
+    [
+      "n.definition1",
+      "adj.definition2"
+    ],
+    0,
+    ""
+  ],
+  [
+    "another_word",
+    "",
+    "",
+    "",
+    0,
+    [
+      "v.definition1"
+    ],
+    0,
+    ""
+  ]
+]
