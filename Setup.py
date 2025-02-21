@@ -9,7 +9,7 @@ from Functions.Roussesearch import parse_definitions ,clean_text,format_and_save
 import logging
 import os 
 from dotenv import load_dotenv
-logging.getLogger("asyncio").setLevel(logging.WARNING)
+logging.getLogger("asyncio").setLevel(logging.ERROR)
 def configure():
     load_dotenv()
 configure()
@@ -56,15 +56,23 @@ formatted_entries = []
 out_file_path = args.out_file_path
 start = time.time()
 async def check_words():
+    limiter=0
     tasks = []
-    pbar =tqdm(total=len(words), desc="Downloading HTML")
     async with asyncio.TaskGroup() as tg:
         # Create and STORE the tasks
+        Semaphore = asyncio.Semaphore(100)
         for word in words:
             url = "https://www.larousse.fr/dictionnaires/francais/" + word.lower()
-            tasks.append(tg.create_task(fetch_html(url)))
-            pbar.update(1)
-    # After TaskGroup completes, get results
+            tasks.append(tg.create_task(fetch_html(url,Semaphore,word)))
+        for done in atqdm.as_completed(tasks,desc="downloading HTML"):
+                limiter += 1
+                await done
+                if limiter == 900:
+                     time.sleep(75)
+                     limiter =0
+
+
+    # After TaskGroup cpletes, get results
     html_content = [task.result() for task in tasks]
     
     for data in tqdm(html_content,desc="checking"):
@@ -80,8 +88,6 @@ def final_output(entry):
     word = entry["word"]
 
     # Skip if word already exists (to avoid duplicates)
-    if word in existing_words:
-        return 
 
     category = entry["category"]
     category_short = find_best_category_match(category, category_map)
@@ -95,16 +101,15 @@ def final_output(entry):
     formatted_entry = [word, "", "", "", 0, definitions, 0, ""]
     return formatted_entry
 
-
-asyncio.run(check_words(),debug=True)
-parsed_data = process_map(request_definitions,valid_html , max_workers=5, desc="parsing data")
-existing_words = {entry[0] for entry in tqdm(formatted_entries,desc="flattening list")}
-# Flatten the nested lists of dictionaries
-new_entries = [item for sublist in parsed_data for item in sublist]  # Flatten list of lists
-formatted_entries = process_map(final_output, new_entries, max_workers=5, desc="appending JSON")
-end = time.time()    
-total_time = end - start
-print (total_time)
-format_and_save_json(formatted_entries, out_file_path)
-print(f"JSON file saved as {out_file_path} with newlines between entries.")
-print("JSON file saved as dictionary.json in one line.")
+if __name__ == "__main__":
+    asyncio.run(check_words(),debug=True)
+    parsed_data = process_map(request_definitions,valid_html , max_workers=10, desc="parsing data")
+    # Flatten the nested lists of dictionaries
+    new_entries = [item for sublist in parsed_data for item in sublist]  # Flatten list of lists
+    formatted_entries = process_map(final_output, new_entries, max_workers=10, desc="appending JSON")
+    end = time.time()    
+    total_time = end - start
+    print (total_time)
+    format_and_save_json(formatted_entries, out_file_path)
+    print(f"JSON file saved as {out_file_path} with newlines between entries.")
+    print("JSON file saved as dictionary.json in one line.")

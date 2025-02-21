@@ -7,11 +7,13 @@ import asyncio
 from tqdm.asyncio import trange as atrange, tqdm as atqdm
 from tqdm import tqdm, trange
 import aiohttp
+import aiofiles
+import os
 ##Brightdata Proxies
-host = "brd.superproxy.io"
-port = 33335
-username ="brd-customer-hl_5abbed84-zone-datacenter_proxy1"
-password = "k54fqfrc20li"
+host = os.getenv('host')
+port = os.getenv('port')
+username =os.getenv('username')
+password = os.getenv('password')
 session_id = random.random()
 proxy_url=('http://{}-session-{}:{}@{}:{}'.format(username, session_id ,password,host, port))
 headers = {
@@ -195,21 +197,23 @@ def find_best_category_match(category, category_map):
     return category
 
 
-async def fetch_html(url: str) -> str:
+async def fetch_html(url: str,Semaphore,word) -> str:
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
-    
-    async with aiohttp.ClientSession(headers=headers) as session:
-        try:
-            async with session.get(url, timeout=7200) as response:
-                response.raise_for_status()
-                html = await response.text()
-                    
-                return html
-        except Exception as e:
-            print(f"Error fetching {url}: {e}")
-            return ""
+    async with Semaphore:
+        async with aiohttp.ClientSession(headers=headers,proxy=proxy_url) as session:
+            try:
+                async with session.get(url, timeout=10800) as response:
+                    response.raise_for_status()
+                    html = await response.text()
+                        
+                    return html
+            except Exception as e:
+# Write the failed word and URL to a file
+                async with aiofiles.open('failed_words.txt', 'a', encoding='utf-8') as f:
+                    await f.write(f"{word},")
+                return ""
 
 def check_link_xpath(html_content):
     if not html_content.strip():
