@@ -1,1 +1,0 @@
-t,entree,sortie,trademark>®,émetteur,récepteur,c,ip,entrée,sortie,ampere,heure,ampère,heure
